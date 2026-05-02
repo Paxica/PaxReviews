@@ -9,14 +9,23 @@ body {
     sans-serif;
 }
 
-/* Custom scrollbar for the review row */
-.reviews-scroll::-webkit-scrollbar {
+/* Custom scrollbar for review rows */
+.reviews-scroll::-webkit-scrollbar,
+::-webkit-scrollbar {
   height: 4px;
+  width: 4px;
 }
-.reviews-scroll::-webkit-scrollbar-track {
+.reviews-scroll::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.reviews-scroll::-webkit-scrollbar-thumb {
+.reviews-scroll::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
   background: #374151;
   border-radius: 2px;
+}
+
+/* Dashboard-specific range input styling */
+input[type="range"] {
+  cursor: pointer;
 }
