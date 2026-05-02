@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Transparent root so the widget adapts to any Framer page background */
 html,
 body {
   background: transparent;
@@ -9,23 +8,28 @@ body {
     sans-serif;
 }
 
-/* Custom scrollbar for review rows */
-.reviews-scroll::-webkit-scrollbar,
-::-webkit-scrollbar {
-  height: 4px;
-  width: 4px;
-}
-.reviews-scroll::-webkit-scrollbar-track,
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-.reviews-scroll::-webkit-scrollbar-thumb,
-::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 2px;
+/* ── Card entry animation ──────────────────────────────────────────────── */
+@keyframes pax-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Dashboard-specific range input styling */
-input[type="range"] {
-  cursor: pointer;
+/* Applied to every ReviewCard — stagger delay set via inline style */
+.pax-card-enter {
+  animation: pax-fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
 }
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { height: 4px; width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+/* ── Misc ─────────────────────────────────────────────────────────────── */
+input[type="range"] { cursor: pointer; }

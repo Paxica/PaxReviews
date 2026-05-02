@@ -1,3 +1,7 @@
+// Uses the Google Places API (New) — v1
+// Requires "Places API (New)" enabled in Google Cloud Console,
+// NOT the legacy "Places API".
+
 export interface OwnerResponse {
   text: string;
   relative_time_description: string;
@@ -9,8 +13,8 @@ export interface GoogleReview {
   profile_photo_url: string;
   rating: number;
   relative_time_description: string;
-  text: string;
-  time: number;
+  text: string;       // always the reviewer's original language
+  time: number;       // Unix seconds
   owner_response?: OwnerResponse;
 }
 
@@ -18,7 +22,6 @@ export interface PlaceDetails {
   name: string;
   rating: number;
   user_ratings_total: number;
-  reviews: GoogleReview[];
 }
 
 export interface ReviewsData {
@@ -26,46 +29,105 @@ export interface ReviewsData {
   reviews: GoogleReview[];
 }
 
-// Module-level cache — persists across requests within a warm serverless instance.
+// ── Internal v1 API types ──────────────────────────────────────────────────
+
+interface V1Text { text: string; languageCode: string }
+
+interface V1Review {
+  name: string;
+  relativePublishTimeDescription: string;
+  rating: number;
+  text?: V1Text;
+  originalText?: V1Text;
+  authorAttribution: { displayName: string; uri: string; photoUri: string };
+  publishTime: string;
+  ownerResponse?: {
+    relativePublishTimeDescription?: string;
+    text?: V1Text;
+  };
+}
+
+interface V1Place {
+  displayName: { text: string };
+  rating: number;
+  userRatingCount: number;
+  reviews?: V1Review[];
+}
+
+function mapReview(r: V1Review): GoogleReview {
+  return {
+    author_name:       r.authorAttribution?.displayName ?? "Anonymous",
+    author_url:        r.authorAttribution?.uri ?? "",
+    profile_photo_url: r.authorAttribution?.photoUri ?? "",
+    rating:            r.rating,
+    relative_time_description: r.relativePublishTimeDescription,
+    // Prefer the original-language text; fall back to whatever Google returns
+    text: r.originalText?.text ?? r.text?.text ?? "",
+    time: Math.floor(new Date(r.publishTime).getTime() / 1000),
+    owner_response: r.ownerResponse?.text?.text
+      ? {
+          text: r.ownerResponse.text.text,
+          relative_time_description:
+            r.ownerResponse.relativePublishTimeDescription ?? "",
+        }
+      : undefined,
+  };
+}
+
+// ── In-memory cache ────────────────────────────────────────────────────────
+
 let cache: { data: ReviewsData; fetchedAt: number } | null = null;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function getReviews(): Promise<ReviewsData> {
   const now = Date.now();
-  if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return cache.data;
-  }
+  if (cache && now - cache.fetchedAt < CACHE_TTL_MS) return cache.data;
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   const placeId = process.env.GOOGLE_PLACE_ID;
 
   if (!apiKey || !placeId) {
     throw new Error(
-      "Missing required env vars: GOOGLE_PLACES_API_KEY and GOOGLE_PLACE_ID"
+      "Missing env vars: GOOGLE_PLACES_API_KEY and GOOGLE_PLACE_ID"
     );
   }
 
-  const fields = "name,rating,user_ratings_total,reviews";
-  const url =
-    `https://maps.googleapis.com/maps/api/place/details/json` +
-    `?place_id=${encodeURIComponent(placeId)}` +
-    `&fields=${encodeURIComponent(fields)}` +
-    `&key=${apiKey}`;
+  const fields = [
+    "displayName",
+    "rating",
+    "userRatingCount",
+    "reviews",
+  ].join(",");
 
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": fields,
+      },
+      cache: "no-store",
+    }
+  );
+
   if (!res.ok) {
-    throw new Error(`Google Places API HTTP error: ${res.status}`);
-  }
-
-  const json = await res.json();
-  if (json.status !== "OK") {
+    const body = await res.text().catch(() => "");
     throw new Error(
-      `Google Places API error: ${json.status} — ${json.error_message ?? ""}`
+      `Places API (New) error ${res.status}: ${body.slice(0, 200)}`
     );
   }
 
-  const place: PlaceDetails = json.result;
-  const data: ReviewsData = { place, reviews: place.reviews ?? [] };
+  const json: V1Place = await res.json();
+
+  const place: PlaceDetails = {
+    name:               json.displayName?.text ?? "Unknown",
+    rating:             json.rating ?? 0,
+    user_ratings_total: json.userRatingCount ?? 0,
+  };
+
+  const reviews: GoogleReview[] = (json.reviews ?? []).map(mapReview);
+
+  const data: ReviewsData = { place, reviews };
   cache = { data, fetchedAt: now };
   return data;
 }

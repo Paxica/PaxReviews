@@ -384,8 +384,6 @@ export default function Dashboard() {
       : { backgroundColor: iframeBackground };
 
   const layoutsNeedingColumns = ["carousel", "grid", "masonry"].includes(cfg.layout);
-  const layoutsNeedingNav = ["carousel", "slider"].includes(cfg.layout);
-  const layoutsNeedingAutoplay = ["carousel", "slider"].includes(cfg.layout);
 
   return (
     <div
@@ -463,7 +461,7 @@ export default function Dashboard() {
             )}
 
             <RangeInput
-              label="Max rows (0 = all)"
+              label={cfg.autoplay ? "Rows per page (0 = auto)" : "Max rows (0 = all)"}
               value={cfg.rows}
               min={0}
               max={10}
@@ -479,45 +477,35 @@ export default function Dashboard() {
             />
           </Section>
 
-          {/* ── Navigation & Autoplay ── */}
-          {(layoutsNeedingNav || layoutsNeedingAutoplay) && (
-            <Section title="Navigation">
-              {layoutsNeedingNav && (
-                <>
-                  <Toggle
-                    label="Show prev / next arrows"
-                    checked={cfg.showNav}
-                    onChange={(v) => set("showNav", v)}
-                  />
-                  <Toggle
-                    label="Show dot indicators"
-                    checked={cfg.showDots}
-                    onChange={(v) => set("showDots", v)}
-                  />
-                </>
-              )}
-              {layoutsNeedingAutoplay && (
-                <>
-                  <Toggle
-                    label="Autoplay"
-                    checked={cfg.autoplay}
-                    onChange={(v) => set("autoplay", v)}
-                  />
-                  {cfg.autoplay && (
-                    <RangeInput
-                      label="Autoplay speed"
-                      value={cfg.autoplayMs}
-                      min={1000}
-                      max={10000}
-                      step={500}
-                      unit="ms"
-                      onChange={(v) => set("autoplayMs", v)}
-                    />
-                  )}
-                </>
-              )}
-            </Section>
-          )}
+          {/* ── Navigation & Autoplay — available for all layouts ── */}
+          <Section title="Autoplay & Navigation">
+            <Toggle
+              label="Autoplay"
+              checked={cfg.autoplay}
+              onChange={(v) => set("autoplay", v)}
+            />
+            {cfg.autoplay && (
+              <RangeInput
+                label="Autoplay speed"
+                value={cfg.autoplayMs}
+                min={1000}
+                max={10000}
+                step={500}
+                unit="ms"
+                onChange={(v) => set("autoplayMs", v)}
+              />
+            )}
+            <Toggle
+              label="Show prev / next arrows"
+              checked={cfg.showNav}
+              onChange={(v) => set("showNav", v)}
+            />
+            <Toggle
+              label="Show dot / page indicators"
+              checked={cfg.showDots}
+              onChange={(v) => set("showDots", v)}
+            />
+          </Section>
 
           {/* ── Header ── */}
           <Section title="Header">

@@ -16,9 +16,8 @@ export function CarouselLayout({ reviews, cfg }: CarouselLayoutProps) {
   const scrollBy = useCallback((dir: "prev" | "next") => {
     const el = scrollRef.current;
     if (!el) return;
-    const delta = el.clientWidth * 0.8;
+    const delta = el.clientWidth * 0.85;
     if (dir === "next") {
-      // Loop back to start when at end
       if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) {
         el.scrollTo({ left: 0, behavior: "smooth" });
       } else {
@@ -35,26 +34,24 @@ export function CarouselLayout({ reviews, cfg }: CarouselLayoutProps) {
     return () => clearInterval(id);
   }, [cfg.autoplay, cfg.autoplayMs, scrollBy]);
 
-  const cardId = "carousel-card";
-
   return (
     <div className="relative">
       <style dangerouslySetInnerHTML={{
         __html: `
-          .${cardId} {
+          .pax-carousel-card {
             flex-shrink: 0;
             min-width: calc(${100 / cfg.columns}% - ${(cfg.gap * (cfg.columns - 1)) / cfg.columns}px);
             scroll-snap-align: start;
           }
           @media (max-width: 640px) {
-            .${cardId} {
+            .pax-carousel-card {
               min-width: calc(${100 / cfg.mobileColumns}% - ${(cfg.gap * (cfg.mobileColumns - 1)) / cfg.mobileColumns}px);
             }
           }
         `,
       }} />
 
-      {/* Scroll track */}
+      {/* Track */}
       <div
         ref={scrollRef}
         className="flex overflow-x-auto pb-2"
@@ -68,17 +65,17 @@ export function CarouselLayout({ reviews, cfg }: CarouselLayoutProps) {
         aria-label="Customer reviews"
       >
         {reviews.map((r, i) => (
-          <div key={`${r.author_name}-${i}`} className={cardId}>
-            <ReviewCard review={r} cfg={cfg} />
+          <div key={`${r.author_name}-${i}`} className="pax-carousel-card">
+            <ReviewCard review={r} cfg={cfg} index={i} />
           </div>
         ))}
       </div>
 
-      {/* Navigation arrows */}
+      {/* Nav arrows */}
       {cfg.showNav && reviews.length > cfg.columns && (
         <div className="flex justify-center gap-3 mt-4">
-          <NavButton onClick={() => scrollBy("prev")} label="Previous reviews" dir="prev" cfg={cfg} />
-          <NavButton onClick={() => scrollBy("next")} label="Next reviews" dir="next" cfg={cfg} />
+          <NavButton onClick={() => scrollBy("prev")} label="Previous" dir="prev" cfg={cfg} />
+          <NavButton onClick={() => scrollBy("next")} label="Next"     dir="next" cfg={cfg} />
         </div>
       )}
     </div>
@@ -86,10 +83,7 @@ export function CarouselLayout({ reviews, cfg }: CarouselLayoutProps) {
 }
 
 function NavButton({
-  onClick,
-  label,
-  dir,
-  cfg,
+  onClick, label, dir, cfg,
 }: {
   onClick: () => void;
   label: string;
@@ -111,18 +105,9 @@ function NavButton({
         cursor: "pointer",
       }}
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ transform: dir === "prev" ? "rotate(180deg)" : "none" }}
-        aria-hidden="true"
-      >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        style={{ transform: dir === "prev" ? "rotate(180deg)" : "none" }} aria-hidden="true">
         <polyline points="6,3 11,8 6,13" />
       </svg>
     </button>

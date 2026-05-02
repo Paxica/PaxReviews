@@ -31,20 +31,8 @@ export function filterReviews(
     );
   }
 
-  result =
-    config.sort === "random"
-      ? shuffle(result)
-      : [...result].sort((a, b) => b.time - a.time);
-
-  if (config.rows > 0) {
-    const cap =
-      config.layout === "list" ||
-      config.layout === "slider" ||
-      config.layout === "badges"
-        ? config.rows
-        : config.rows * config.columns;
-    result = result.slice(0, cap);
-  }
-
-  return result;
+  // Sort — rows/page-size slicing is handled per layout component
+  return config.sort === "random"
+    ? shuffle(result)
+    : [...result].sort((a, b) => b.time - a.time);
 }
