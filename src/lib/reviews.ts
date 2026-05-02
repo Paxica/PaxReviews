@@ -1,3 +1,8 @@
+export interface OwnerResponse {
+  text: string;
+  relative_time_description: string;
+}
+
 export interface GoogleReview {
   author_name: string;
   author_url: string;
@@ -6,6 +11,7 @@ export interface GoogleReview {
   relative_time_description: string;
   text: string;
   time: number;
+  owner_response?: OwnerResponse;
 }
 
 export interface PlaceDetails {
@@ -15,17 +21,16 @@ export interface PlaceDetails {
   reviews: GoogleReview[];
 }
 
-export interface ReviewsResult {
+export interface ReviewsData {
   place: PlaceDetails;
-  filteredReviews: GoogleReview[];
+  reviews: GoogleReview[];
 }
 
-// In-memory cache — survives for the lifetime of the serverless function warm instance.
-// Vercel re-deploys reset it; for persistent cross-cold-start caching use KV or ISR revalidation.
-let cache: { data: ReviewsResult; fetchedAt: number } | null = null;
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Module-level cache — persists across requests within a warm serverless instance.
+let cache: { data: ReviewsData; fetchedAt: number } | null = null;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-export async function getReviews(): Promise<ReviewsResult> {
+export async function getReviews(): Promise<ReviewsData> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.data;
@@ -33,7 +38,6 @@ export async function getReviews(): Promise<ReviewsResult> {
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   const placeId = process.env.GOOGLE_PLACE_ID;
-  const minStars = parseInt(process.env.MIN_STAR_RATING ?? "4", 10);
 
   if (!apiKey || !placeId) {
     throw new Error(
@@ -55,15 +59,13 @@ export async function getReviews(): Promise<ReviewsResult> {
 
   const json = await res.json();
   if (json.status !== "OK") {
-    throw new Error(`Google Places API error: ${json.status} — ${json.error_message ?? ""}`);
+    throw new Error(
+      `Google Places API error: ${json.status} — ${json.error_message ?? ""}`
+    );
   }
 
   const place: PlaceDetails = json.result;
-  const filteredReviews: GoogleReview[] = (place.reviews ?? [])
-    .filter((r) => r.rating >= minStars)
-    .sort((a, b) => b.time - a.time);
-
-  const data: ReviewsResult = { place, filteredReviews };
+  const data: ReviewsData = { place, reviews: place.reviews ?? [] };
   cache = { data, fetchedAt: now };
   return data;
 }

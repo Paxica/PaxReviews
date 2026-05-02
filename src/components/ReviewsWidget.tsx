@@ -1,62 +1,78 @@
 import { getReviews } from "@/lib/reviews";
-import { ReviewCard } from "./ReviewCard";
-import { StarRating } from "./StarRating";
-import { GoogleLogo } from "./GoogleLogo";
+import { filterReviews } from "@/lib/filterReviews";
+import type { WidgetConfig } from "@/lib/config";
+import { WidgetHeader } from "./WidgetHeader";
+import { JsonLd } from "./JsonLd";
+import { GridLayout } from "./layouts/GridLayout";
+import { MasonryLayout } from "./layouts/MasonryLayout";
+import { ListLayout } from "./layouts/ListLayout";
+import { BadgesLayout } from "./layouts/BadgesLayout";
+import { CarouselLayout } from "./layouts/CarouselLayout";
+import { SliderLayout } from "./layouts/SliderLayout";
 
-export async function ReviewsWidget() {
-  let result;
+interface ReviewsWidgetProps {
+  cfg: WidgetConfig;
+}
+
+export async function ReviewsWidget({ cfg }: ReviewsWidgetProps) {
+  let data;
   try {
-    result = await getReviews();
+    data = await getReviews();
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const msg = err instanceof Error ? err.message : "Unknown error";
     return (
-      <div className="flex items-center justify-center p-8 text-red-400 text-sm">
-        Could not load reviews: {message}
+      <div
+        className="flex items-center justify-center p-8 text-sm"
+        style={{ color: "#f87171" }}
+      >
+        Could not load reviews: {msg}
       </div>
     );
   }
 
-  const { place, filteredReviews } = result;
+  const { place, reviews: raw } = data;
+  const reviews = filterReviews(raw, cfg);
 
   return (
-    <section className="w-full px-4 py-6 select-none">
-      {/* Header */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <GoogleLogo />
-          <div>
-            <h2 className="text-base font-semibold text-white leading-tight">
-              {place.name}
-            </h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-white tabular-nums">
-                {place.rating?.toFixed(1)}
-              </span>
-              <StarRating rating={place.rating ?? 0} size="md" />
-              <span className="text-sm text-gray-400">
-                ({place.user_ratings_total?.toLocaleString() ?? 0})
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <section
+      className="w-full px-4 py-6 select-none"
+      style={{ backgroundColor: "transparent" }}
+    >
+      {cfg.showJsonLd && <JsonLd place={place} reviews={reviews} />}
 
-      {/* Scrollable review cards */}
-      {filteredReviews.length === 0 ? (
-        <p className="text-sm text-gray-400 italic">
-          No reviews matching the minimum star rating.
+      {cfg.showHeader && <WidgetHeader place={place} cfg={cfg} />}
+
+      {reviews.length === 0 ? (
+        <p className="text-sm italic" style={{ color: cfg.colorMuted }}>
+          No reviews match the current filters.
         </p>
       ) : (
-        <div
-          className="reviews-scroll flex gap-4 overflow-x-auto pb-3"
-          role="list"
-          aria-label="Customer reviews"
-        >
-          {filteredReviews.map((review, i) => (
-            <ReviewCard key={`${review.author_name}-${i}`} review={review} />
-          ))}
-        </div>
+        <LayoutSwitch reviews={reviews} cfg={cfg} />
       )}
     </section>
   );
+}
+
+function LayoutSwitch({
+  reviews,
+  cfg,
+}: {
+  reviews: ReturnType<typeof filterReviews>;
+  cfg: WidgetConfig;
+}) {
+  switch (cfg.layout) {
+    case "grid":
+      return <GridLayout reviews={reviews} cfg={cfg} />;
+    case "masonry":
+      return <MasonryLayout reviews={reviews} cfg={cfg} />;
+    case "list":
+      return <ListLayout reviews={reviews} cfg={cfg} />;
+    case "badges":
+      return <BadgesLayout reviews={reviews} cfg={cfg} />;
+    case "slider":
+      return <SliderLayout reviews={reviews} cfg={cfg} />;
+    case "carousel":
+    default:
+      return <CarouselLayout reviews={reviews} cfg={cfg} />;
+  }
 }
